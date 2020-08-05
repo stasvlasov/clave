@@ -2,10 +2,6 @@
 (org-babel-tangle)
 
 * clavis engine
-:PROPERTIES:
-:ID:       org:h563bc81sri0
-:END:
-
 #+BEGIN_SRC emacs-lisp :tangle clavis.el :results none
       ;; global keys (not sure if I need to rebind ESC)
       (define-key key-translation-map (kbd "ESC") (kbd "C-g"))
