@@ -1,0 +1,66 @@
+This is modal editing minor mode for Emacs. It is meant to demonstrate more general principles of binding computer commands to physical keys.
+
+Principles of clave.el
+- less dependency
+- use autoloads when remapping/binding commands
+- if clave is not loaded (brocken) use-package should just swear on unknown keyword (:remap)
+
+* Leader keymaps
+One hand ey compos for one hand are easier when it is inward movement (e.g. from pinky to index fingers). If leader key is on Caps Lock then the following 6 prefix keymaps could be considered after pressing the Caps Lock (lead key).
+
+Left hand:
+d f g (f and g for more freqetnt)
+
+Right hand
+; l k (l and k easier)
+
+* Categories for commands
+for each key I can make a category
+
+- Apps
+  - gnus
+  - emms
+  - firefox
+  - emacs
+  - calendar
+  - magit-status
+  - calc
+  - IDE (R)
+  - vterm
+- evaluations and executions
+- inserts
+  - expands
+  - general inserts like pair of brackes
+  - setting org-mode properties
+- navigation
+  - buffers
+  - files
+  - dirs
+  - bookmarks
+  - revisions
+  - windows
+- cursor movements
+
+* Which keymaps to bind commands
+
+- if command called repeatedly then bind it to command mode keymap(s) (e.g., cursor movements)
+- if command used frequently bind it to leader map (use keyboard layout heatmpa visualization of commands frequencies)
+- the rest burry into leader prefix keymaps
+
+* Where to define keybindings in your config
+
+- if it is my custom command and it is meant to be used in certain modes then load it in :config of this mode use-package definition and bind it there
+- if it is my custom command and it can be used independently or module for other package the make it a package and defind keybindings there
+- bindings to emacs commands could be made in clave :config
+- if bind command works only in sertain mode then remap it to this mode keymap only
+
+
+* Workflow for keybindings
+
+- in your emacs config (e.g., init.el) find where the command is defined or binded (if already binded). Here quick search would be handy.
+- add dummy binding here with its description (type)
+- set it to some empty keymap and key right away
+- visualize current keybindings for relevant keymaps
+- think where to bind it or wich what to rebind it
+- bind command to a key
+- git commit your config with some rationale for key binding (e.g. ergonomics reasons) with special prefix in the commit message (e.g., keybindig: your command, etc.)
