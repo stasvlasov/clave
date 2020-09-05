@@ -134,6 +134,8 @@
   "Remaps dummy CLAVE-MAP-KEY function to COMMAND in ACTIVE-MAP and appends (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL) to `clave-keys' list. If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-map' with  `clave-map-init-standard-extra-keys'. If command is unquoted symbol then it is assumed to be a keymap which is bind directly to key (without remapping) as there is no known mechanism to remap command to keymap."
   (let* ((clave-map-name (if clave-map (symbol-name clave-map) "clave-map"))
 	 (clave-func (make-symbol (concat clave-map-name "-" key)))
+	 ;; the below I learned from xah-fly-keys and bind-key.el 
+	 ;; it is meant to pass keymap symbol to define-key and not the map itself
 	 (clave-map-var (make-symbol "clave-map-name"))
 	 (active-map-var (make-symbol "active-map-name"))
 	 (command-var (make-symbol "command-name"))
@@ -376,8 +378,12 @@
 			     clave-remap-args))
 			 (if active-map
 			     (progn
+			       (if (atom active-map)
 			       `(eval-after-load (quote ,name)
-				  '(clave-remap-key ,@clave-remap-args)))
+				  '(clave-remap-key ,@clave-remap-args))
+			       ;; this is a new idea to evaluate after other than package feature
+			       `(eval-after-load (quote ,(cdr active-map))
+				  '(clave-remap-key ,@clave-remap-args))))
 			   `(progn
 			      (unless (or (keymapp ,command)
 					  (fboundp ,command))
@@ -400,46 +406,265 @@
     ;;   :config (lala)
     ;;   )
 
-(defvar clave-kle-url "http://www.keyboard-layout-editor.com/##@@_f:1&a:3%3B&=Esc%0A%0A%0A%0A%0A1&=F1&=F2&=F3&=F4&=F5&=F6&=F7&=F8&=F9&=F10&=F11&=F12&=PrtSNmLk&=PausScrLk&=DeletInsert%3B&@=%60&=1&=2&=3&=4&=5&=6&=7&=8&=9&=0&=-&=%2F=&_w:2%3B&=DEL&=Home%3B&@_w:1.5%3B&=Tab&=Q&=W&=E&=R&=T&=Y&=U&=I&=O&=P&=%5B&=%5D&_w:1.5%3B&=%5C&=Page%20Up%3B&@_w:1.75%3B&=Caps%20Lock&=A&=S&=D&=F&=G&=H&=J&=K&=L&=%2F%3B&=%22&_w:2.25%3B&=RET&=Page%20Down%3B&@_w:2.25%3B&=Shift&=Z&=X&=C&=V&=B&=N&=M&=,&=.&=%2F%2F&_w:1.75%3B&=Shift&=%E2%86%91&=End%3B&@_w:1.25%3B&=Ctrl&_w:1.25%3B&=Win&_w:1.25%3B&=Alt&_w:6.25%3B&=SPC&=Alt&=Fn&=Ctrl&=%E2%86%90&=%E2%86%93&=%E2%86%92")
+(defvar clave-keys-colors
+      (seq-reverse '("#1B0B5A"
+                     "#2E0C5D"
+                     "#420D60"
+                     "#580D64"
+                     "#670E5F"
+                     "#6A0F4E"
+                     "#6E103C"
+                     "#711129"
+                     "#741114"
+                     "#782612"
+                     "#7B3E13"
+                     "#7E5814"
+                     "#817215"
+                     "#7C8416"
+                     "#668817"
+                     "#4F8B18"
+                     "#378E19"
+                     "#1E911A"
+                     "#1B9432"
+                     "#1C974E"
+                     "#1D9A6C"
+                     "#229E7E"
+                     "#27A28F"
+                     "#2CA6A0"
+                     "#32A2A9"
+                     "#3799AD"
+                     "#3C90B1"
+                     "#4288B4"
+                     "#4780B8"
+                     "#4D79BB"
+                     "#5372BE"
+                     "#586CC2"
+                     "#5E66C5"
+                     "#6764C8"
+                     "#776ACB"
+                     "#8770CE"
+                     "#9676D1"
+                     "#A47CD4"
+                     "#B282D7"
+                     "#BF88DA"
+                     "#CB8FDC")))
+
+(defun clave-clm-count-commands (logs-regex commands)
+  ;; here I can get a dates diapason from user
+  (when-let* ((sv-clm/logging-dir-p (boundp 'sv-clm/logging-dir))
+              ;; get all files in form YYYY-MM-DD
+              (files (directory-files-recursively sv-clm/logging-dir logs-regex)))
+    (defun count-command (command)
+      (beginning-of-buffer)
+      (setq count 0)
+      (while (search-forward (concat " " command "\n") nil t)
+        (setq count (1+ count)))
+      count)
+    (with-temp-buffer
+      ;; insert all files
+      (mapcar 'insert-file-contents files)
+      (mapcar 'count-command commands))))
+
+;; test
+;; (clave-clm-count-commands "2020-[0-9\\\\-]+" '("next-line" "org-clock-goto"))
+
+(defun clave-kle-make-key-labels (clave-keys
+                                  &optional
+                                  logs-regex
+                                  clave-map-filter
+                                  active-map-filter
+                                  log-counts)
+  (defun maps-match-p (key-description)
+    (pcase-let ((`(,active-map ,clave-map) key-description))
+      (and (string= clave-map clave-map-filter)
+           (string= active-map active-map-filter))))
+  (defun get-key-color (count)
+    (let*  ((step (/ (- (seq-max keys-counts) (seq-min keys-counts))
+                     (- (length clave-keys-colors) 1)))
+            (color-index (round (/ count step))))
+      (nth color-index clave-keys-colors)))
+  (defun log+ (count) (log (1+ count)))
+  ;; set defaults
+  (let* ((clave-map-filter (if clave-map-filter
+                               clave-map-filter
+                             "clave-map"))
+         (active-map-filter (if active-map-filter
+                                active-map-filter
+                              "global-map"))
+         (logs-regex (if logs-regex
+                         logs-regex
+                       "[0-9\\-]+"))
+         ;; filter keymaps
+         (keys (seq-filter 'maps-match-p clave-keys))
+         (keys-commands
+          (mapcar (lambda (x) (nth 3 x)) keys))
+         (keys-counts
+          (clave-clm-count-commands logs-regex keys-commands))
+         (log-counts t)
+         (keys-counts
+          (if log-counts (mapcar 'log+ keys-counts) keys-counts))
+         (keys-colors
+          (mapcar 'get-key-color keys-counts)))
+    (defun make-key-label (key-description key-color)
+      (pcase-let
+          ((`(,active-map ,clave-map ,key ,command ,type ,label)
+            key-description))
+        (list key
+              (concat
+               (when key-color
+                 ;; # is %23
+                 (concat "&_c=%23" (substring key-color 1) "%3B"))
+               "&="
+               (url-encode-url
+                (concat
+                 (clave-kle-encode-url (if label label command))
+                 "\n\n\n\n\n\n\n\n\n\n\n"))))))
+    (seq-mapn 'make-key-label
+              keys
+              keys-colors)))
+
+;; test
+;; (clave-kle-make-key-labels clave-keys "2020-08")
+
+(defvar clave-kle-encode-url-chars
+      '(("/"   "%2F%2F")
+        ("="   "%2F=")
+        (";"   "%2F%3B")
+        ("`"   "%60" )
+        ("#"   "%23")
+        ("\""  "%22" )
+        ("["   "%5B" )
+        ("]"   "%5D" )
+        ("\\"  "%5C" )))
+
+(defun clave-kle-encode-url (str &optional chars)
+  (let ((chars (if chars chars
+                 (when (boundp 'clave-kle-encode-url-chars)
+                   clave-kle-encode-url-chars))))
+    (while (setq char (pop chars))
+      (setq str
+            (replace-regexp-in-string
+             (regexp-quote (car char)) (cadr char) str nil 'literal)))
+    str))
+
+;; test
+;; (clave-kle-encode-url  "/asdf=")
+
+
+
+(defun clave-kle-decode-url (str &optional chars)
+  (let ((chars (if chars chars
+                 (when (boundp 'clave-kle-encode-url-chars)
+                   clave-kle-encode-url-chars))))
+    (while (setq char (pop chars))
+      (setq str
+            (replace-regexp-in-string
+             (regexp-quote (cadr char)) (car char) str nil 'literal)))
+    str))
+
+
+;; (clave-kle-decode-url "%22")
+
+(defvar clave-kle-url
+      "http://www.keyboard-layout-editor.com/##@@_f:1&a:3%3B&=ESC&=F1&=F2&=F3&=F4&=F5&=F6&=F7&=F8&=F9&=F10&=F11&=F12&=NmLk&=ScrLk&=Insert%3B&@=%60&=1&=2&=3&=4&=5&=6&=7&=8&=9&=0&=-&=%2F=&_w:2%3B&=DEL&=Home%3B&@_w:1.5%3B&=TAB&=q&=w&=e&=r&=t&=y&=u&=i&=o&=p&=%5B&=%5D&_w:1.5%3B&=%5C&=Page%20Up%3B&@_w:1.75%3B&=Caps%20Lock&=a&=s&=d&=f&=g&=h&=j&=k&=l&=%2F%3B&='&_w:2.25%3B&=RET&=Page%20Down%3B&@_w:2.25%3B&=Shift&=z&=x&=c&=v&=b&=n&=m&=,&=.&=%2F%2F&_w:1.75%3B&=Shift&=%E2%86%91&=End%3B&@_w:1.25%3B&=Ctrl&_w:1.25%3B&=Win&_w:1.25%3B&=Alt&_w:6.25%3B&=SPC&=Alt&=Fn&=Ctrl&=%E2%86%90&=%E2%86%93&=%E2%86%92")
 
 
 ;; http://www.keyboard-layout-editor.com
-;; @_w:1.5 - properties and ends with ;
+;; @_w:1.5 - properties and ends with ; (%3B)
 ;; &@=%60 - new line
 ;; search for keys between "&=" and "%3B"
 ;; For each matched KEY I need to insert my commad and add "\n\n\n\n\nKEY"
 
 (defun clave-kle-make-url (&optional clave-map-filter active-map-filter)
   (let ((clave-map-filter (if clave-map-filter
-			      clave-map-filter
-			    "clave-map"))
-	(active-map-filter (if active-map-filter
-			       active-map-filter
-			     "global-map")))
+                              clave-map-filter
+                            "clave-map"))
+        (active-map-filter (if active-map-filter
+                               active-map-filter
+                             "global-map")))
     (with-temp-buffer
       (insert clave-kle-url)
       (beginning-of-buffer)
       (while (search-forward "&=" nil t)
-	(mapcar
-	 (lambda (key-description)
-	   (pcase-let
-	       ((`(,active-map ,clave-map ,key ,command ,type ,label)
-		 key-description))
-	     (when (and (string= clave-map clave-map-filter)
-			(string= active-map active-map-filter)
-			(or (looking-at
-			     (regexp-quote
-			      (concat key "&=")))
-			    (looking-at
-			     (regexp-quote
-			      (concat key "%3B")))))
-	       (insert (url-encode-url
-			(concat command "\n\n\n\n\n"))))))
-	 clave-keys))
+        (mapcar
+         (lambda (key-description)
+           (pcase-let
+               ((`(,active-map ,clave-map ,key ,command ,type ,label)
+                 key-description))
+             (when (and (string= active-map active-map-filter)
+                        (string= clave-map clave-map-filter)
+                        (or (looking-at
+                             (regexp-quote
+                              (concat key "&=")))
+                            (looking-at
+                             (regexp-quote
+                              (concat key "%3B")))))
+               (insert (url-encode-url
+                        (concat
+                         (if label label command)
+                         "\n\n\n\n\n"))))))
+         clave-keys))
       (buffer-string))))
 
-(clave-kle-make-url)
 
-(defun clave-kle-show (&optional clave-map-filter active-map-filter)
+
+
+
+
+(defun clave-kle-show (&optional logs-regex clave-map-filter active-map-filter)
   (interactive)
-  (browse-url (clave-kle-make-url clave-map-filter active-map-filter)))
+  ;; (list (read-regexp "Filter log files by regex:" "2020-")
+  ;;       (completing-read
+  ;;        "Chose clave keymap to visualize:"
+  ;;        (delete-dups (mapcar 'cadr clave-keys)))
+  ;;       (completing-read
+  ;;        "Chose context keymap to visualize:"
+  ;;        (delete-dups (mapcar 'car clave-keys)))))
+  (browse-url (clave-kle-make-url logs-regex clave-map-filter active-map-filter)))
+
+
+(defvar clave-kle-default-key-color "#cccccc")
+
+;; new
+(defun clave-kle-make-url (&optional logs-regex clave-map-filter active-map-filter)
+  (let ((colorful-commands
+         (clave-kle-make-key-labels
+          clave-keys "2020-09" clave-map-filter active-map-filter))
+        (clave-kle-default-key-color
+         (clave-kle-encode-url clave-kle-default-key-color))
+        ;; do case sensitive search
+        (case-fold-search nil)
+        colorful-command)
+    (with-temp-buffer
+      (insert clave-kle-url)
+      ;; TODO: insert title (maps names)
+      (beginning-of-buffer)
+      (search-forward "/##@")
+      (insert (url-encode-url (concat "_name=clave-map: " clave-map-filter
+                      " in active-map: " active-map-filter
+                      "%3B&")))
+      (while (setq colorful-command (pop colorful-commands))
+        (beginning-of-buffer)
+        (when (re-search-forward
+               (concat "&=\\("
+                       (regexp-quote (clave-kle-encode-url (car colorful-command)))
+                       "\\)\\(&=\\|%3B\\|&_\\)")
+               ;; "&=" starts key label
+               ;; "%3B" starts new line
+               ;; "&_" starts property (w is width)
+               nil t)
+          ;; the easiest is to wrap into colors!
+          ;; first insert default color as next
+          (goto-char (match-beginning 2))
+          (insert (concat "&_c=" clave-kle-default-key-color "%3B"))
+          ;; then go to begginning
+          (goto-char (match-beginning 0))
+          ;; remove &= as it will be in colorful-commands
+          (delete-char 2)
+          ;; insert key description and color
+          (insert (cadr colorful-command))))
+      (buffer-string))))
+
+
+
+;; (clave-kle-make-url)
