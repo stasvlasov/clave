@@ -1,32 +1,116 @@
-~clave~ is another modal editing (minor) mode for Emacs. ~clave~ pronounced as ˈklä-(ˌ)vā (from Spanish, /keystone/, /clef/, from Latin clavis, /key/).
+~clave~ is a modal editing minor mode for Emacs. ~clave~ pronounces as ˈklä-(ˌ)vā (from Spanish, /keystone/, /clef/, from Latin clavis, /key/).
 
-This package is meant to demonstrate a more general practice of binding computer commands to physical keys.
+This package demonstrates general principles of binding computer commands to physical keyboard press keys.
 
-* Workflow for keybindings
+* Installation and config example
+You can install ~clave~ with [[https://github.com/raxod502/straight.el][straight.el]] because it is not on Melpa (yet).
 
-- in your emacs config (e.g., init.el) find where the command is defined or binded (if already binded). Here quick search would be handy.
-- add dummy binding here with its description (type)
-- set it to some empty keymap and key right away
-- visualize current keybindings for relevant keymaps
-- think where to bind it or which what to rebind it
-- bind command to a key
-- git commit your config with some rationale for key binding (e.g. ergonomics reasons) with special prefix in the commit message (e.g., keybindig: your command, etc.)
+#+BEGIN_SRC emacs-lisp
+  (use-package clave
+    :demand t
+    :straight (:type git :host github :repo "stasvlasov/clave")
+    :config
+    ;; just an example of possible config
+    ;; clave minor mode states invocation
+    (define-key clave-minor-mode-map (kbd "M-SPC") #'clave-on)
+    ;; below is already set by default (no need to config)
+    (define-key clave-minor-mode-map (kbd "SPC") #'clave-off)
+    ;; leader keymap available if minor mode is active
+    (clave-map-init 'clave-lead-map )
+    ;; you cad bind your leader key also as CAPSLOCK in your OS
+    (define-key clave-minor-mode-map (kbd "<menu>") clave-lead-map)
+    ;; rebind keys
+    (clave-remap
+     ;; basic movements
+     ("u" 'backward-word "edit" "⇦ word")
+     ("i" 'previous-line "edit" "⇧")
+     ("j" 'next-line "edit" "⇩")
+     ("k" 'backward-char "edit" "←") 
+     ("l" 'forward-char "edit" "→")
+     (";" 'forward-word "edit" "⇨ word")
+     ;; edits
+     ("z" 'undo "edit" "↶ undo")
+     ("s" 'delete-backward-char "edit" "⌫") 
+     ("d" 'delete-char "edit" "⌦")
+     ;; bind leader keys
+     :clave-map clave-lead-map
+     ("a" 'mark-whole-buffer) 
+     ("m" 'switch-to-buffer)
+     ("RET" 'execute-extended-command "interact" "M-x")
+     ("n" 'find-file)
+     ;; set lead prefix keymaps
+     ("i" help-map))
+    ;; Start clave
+    (clave t))
+#+END_SRC
 
-* Where to define keybindings in your config
+* Features
 
-- if it is my custom command and it is meant to be used in certain modes then load it in :config of this mode use-package definition and bind it there
-- if it is my custom command and it can be used independently or module for other package the make it a package and define keybindings there
-- bindings to emacs commands could be made in clave :config
-- if bind command works only in certain mode then remap it to this mode keymap only
+- The main idea is that ~clave~ just remaps its dummy functions (e.g. ~clave-map-/a~ which is bind to ~a~ key in ~clave-map~) to commands that you need. It is easy to do with ~clave-remap~ function or ~:remap~ keyword in ~use-package~ (see example below)
+- By default remapping is done in ~global-map~.
+- For commands that are not build in Emacs it is recommended to do remapping in package specific keymaps so it will only be active when the keymap is active and it is overtake remappings from ~global-map~.
+- Function ~clave-map-init~ generates a new keymap by populating it with keybindings to map specific dummy functions.
+- ~clave~ provides basic visualization functionality for your keymaps which also includes coloring keys (a la heatmap) by usage frequency. See example below.
+  - For frequencies visualization you also need to install and setup ~command-log-mode~ package.
+  - Frequencies can be log transformed if needed for better look.
 
+** Integration with ~use-package~
 
-* Which keymaps to bind commands
+~clave~ adds a ~:remap~ keyword to ~use-package~. See an example of how you can bind ~dired~ commands with ~:remap~ keyword.
 
-- if command called repeatedly then bind it to command mode keymap(s) (e.g., cursor movements)
-- if command used frequently bind it to leader map (use keyboard layout heatmap visualization of commands frequencies)
-- the rest goes into leader prefix keymaps
+#+BEGIN_SRC emacs-lisp
+  (use-package dired
+    :config
+    ;; copy/move between dired buffers
+    (setq dired-dwim-target t)
+    ;; human readable size
+    (setq dired-listing-switches "-alh")
+    :remap
+    (:clave-map clave-files-map 
+     ("n" 'dired-jump)
+     ("k" 'dired)
+     :active-map dired-mode-map
+     ("y" 'find-grep-dired)
+     ("w" 'dired-create-directory)
+     ("x" 'dired-do-delete)
+     ("s" 'dired-do-rename)
+     ("d" 'dired-do-copy)))
+#+END_SRC
 
-* Leader keymaps
+** Keymaps visualization and frequency heatmap
+
+Visualization is done by generating a custom link to [[http://www.keyboard-layout-editor.com/][Keyboard Layout Editor]] (I am not related to that project) and opening it in browser.
+
+[[file:figures/keybindings.png]]
+
+* General principles of binding computer commands
+
+** Workflow for keybindings
+
+Suggestion for a general workflow for bindings kes:
+- In your emacs config (e.g., init.el) find where the command is defined or binded (if already binded). Here quick search would be handy.
+- Add dummy binding here with its description (type)
+- Set it to some empty keymap and key right away
+- Visualize current keybindings for relevant keymaps
+- Think where to bind it or which what to rebind it
+- Bind command to a key
+- Git commit your config with some rationale for key binding (e.g. ergonomics reasons) with special prefix in the commit message (e.g., keybindig: your command, etc.)
+
+** Where to define keybindings in your config
+
+- If it is my custom command and it is meant to be used in certain modes then load it in :config of this mode use-package definition and bind it there
+- If it is my custom command and it can be used independently or module for other package the make it a package and define keybindings there
+- Bindings to emacs commands could be made in clave :config
+- If bind command works only in certain mode then remap it to this mode keymap only
+
+  
+** Which keymaps to bind commands
+
+- If command called repeatedly then bind it to command mode keymap(s) (e.g., cursor movements)
+- If command used frequently bind it to leader map (use keyboard layout heatmap visualization of commands frequencies)
+- The rest goes into leader prefix keymaps
+
+** What are the good leader keymaps
 One hand key combos for one hand are easier when it is inward movement (e.g. from pinky to index fingers). If leader key is on Caps Lock then the following 6 prefix keymaps could be considered after pressing the Caps Lock (lead key).
 
 Left hand:
@@ -35,32 +119,5 @@ d f g (f and g for more frequent)
 Right hand
 ; l k (l and k easier)
 
-* Categories for commands
-For each keybinding (command) can have category.
 
-Examples:
-
-- Apps
-  - gnus
-  - emms
-  - firefox
-  - emacs
-  - calendar
-  - magit-status
-  - calc
-  - IDE (R)
-  - vterm
-- evaluations and executions
-- inserts
-  - expands
-  - general inserts like pair of brackets
-  - setting org-mode properties
-- navigation
-  - buffers
-  - files
-  - dirs
-  - bookmarks
-  - revisions
-  - windows
-- cursor movements
 

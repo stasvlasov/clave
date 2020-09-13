@@ -325,10 +325,6 @@
     (progn (clave-unset-hooks)
 	   (clave-off))))
 
-(provide 'clave)
-
-;; clave.el ends here
-
 ;; clave use-package integration
 
 ;;add :remap keyword
@@ -406,48 +402,32 @@
     ;;   :config (lala)
     ;;   )
 
+;; clave visualizatoin with KLE
+
 (defvar clave-keys-colors
-      (seq-reverse '("#1B0B5A"
-                     "#2E0C5D"
-                     "#420D60"
-                     "#580D64"
-                     "#670E5F"
-                     "#6A0F4E"
-                     "#6E103C"
-                     "#711129"
-                     "#741114"
-                     "#782612"
-                     "#7B3E13"
-                     "#7E5814"
-                     "#817215"
-                     "#7C8416"
-                     "#668817"
-                     "#4F8B18"
-                     "#378E19"
-                     "#1E911A"
-                     "#1B9432"
-                     "#1C974E"
-                     "#1D9A6C"
-                     "#229E7E"
-                     "#27A28F"
-                     "#2CA6A0"
-                     "#32A2A9"
-                     "#3799AD"
-                     "#3C90B1"
-                     "#4288B4"
-                     "#4780B8"
-                     "#4D79BB"
-                     "#5372BE"
-                     "#586CC2"
-                     "#5E66C5"
-                     "#6764C8"
-                     "#776ACB"
-                     "#8770CE"
-                     "#9676D1"
-                     "#A47CD4"
-                     "#B282D7"
-                     "#BF88DA"
-                     "#CB8FDC")))
+      (seq-reverse '(
+"#B55762"
+"#BB5D5B"
+"#C16E60"
+"#C77F64"
+"#CD9168"
+"#D2A36C"
+"#D8B570"
+"#DEC875"
+"#E3DB79"
+"#E4E97E"
+"#DBEE82"
+"#CCEC8B"
+"#C0EA94"
+"#B7E89D"
+"#B2E7A5"
+"#AFE6AD"
+"#B5E5BA"
+"#BCE5C7"
+"#C3E5D1"
+"#C9E5DA"
+"#D0E6E0"
+)))
 
 (defun clave-clm-count-commands (logs-regex commands)
   ;; here I can get a dates diapason from user
@@ -469,10 +449,10 @@
 ;; (clave-clm-count-commands "2020-[0-9\\\\-]+" '("next-line" "org-clock-goto"))
 
 (defun clave-kle-make-key-labels (clave-keys
-                                  &optional
                                   logs-regex
                                   clave-map-filter
                                   active-map-filter
+                                  &optional
                                   log-counts)
   (defun maps-match-p (key-description)
     (pcase-let ((`(,active-map ,clave-map) key-description))
@@ -485,22 +465,12 @@
       (nth color-index clave-keys-colors)))
   (defun log+ (count) (log (1+ count)))
   ;; set defaults
-  (let* ((clave-map-filter (if clave-map-filter
-                               clave-map-filter
-                             "clave-map"))
-         (active-map-filter (if active-map-filter
-                                active-map-filter
-                              "global-map"))
-         (logs-regex (if logs-regex
-                         logs-regex
-                       "[0-9\\-]+"))
-         ;; filter keymaps
+  (let* (;; filter keymaps
          (keys (seq-filter 'maps-match-p clave-keys))
          (keys-commands
           (mapcar (lambda (x) (nth 3 x)) keys))
          (keys-counts
           (clave-clm-count-commands logs-regex keys-commands))
-         (log-counts t)
          (keys-counts
           (if log-counts (mapcar 'log+ keys-counts) keys-counts))
          (keys-colors
@@ -606,33 +576,17 @@
          clave-keys))
       (buffer-string))))
 
-
-
-
-
-
-(defun clave-kle-show (&optional logs-regex clave-map-filter active-map-filter)
-  (interactive)
-  ;; (list (read-regexp "Filter log files by regex:" "2020-")
-  ;;       (completing-read
-  ;;        "Chose clave keymap to visualize:"
-  ;;        (delete-dups (mapcar 'cadr clave-keys)))
-  ;;       (completing-read
-  ;;        "Chose context keymap to visualize:"
-  ;;        (delete-dups (mapcar 'car clave-keys)))))
-  (browse-url (clave-kle-make-url logs-regex clave-map-filter active-map-filter)))
-
-
 (defvar clave-kle-default-key-color "#cccccc")
 
 ;; new
-(defun clave-kle-make-url (&optional logs-regex clave-map-filter active-map-filter)
+(defun clave-kle-make-url
+    (&optional logs-regex clave-map-filter active-map-filter log-counts)
   (let ((colorful-commands
          (clave-kle-make-key-labels
-          clave-keys "2020-09" clave-map-filter active-map-filter))
+          clave-keys logs-regex clave-map-filter active-map-filter log-counts))
         (clave-kle-default-key-color
          (clave-kle-encode-url clave-kle-default-key-color))
-        ;; do case sensitive search
+        ;; toggle case sensitive search
         (case-fold-search nil)
         colorful-command)
     (with-temp-buffer
@@ -640,8 +594,8 @@
       ;; TODO: insert title (maps names)
       (beginning-of-buffer)
       (search-forward "/##@")
-      (insert (url-encode-url (concat "_name=clave-map: " clave-map-filter
-                      " in active-map: " active-map-filter
+      (insert (url-encode-url (concat "_name=" clave-map-filter
+                      " from " active-map-filter
                       "%3B&")))
       (while (setq colorful-command (pop colorful-commands))
         (beginning-of-buffer)
@@ -666,5 +620,21 @@
       (buffer-string))))
 
 
+(defun clave-kle-show (&optional logs-regex clave-map-filter active-map-filter log-counts)
+  (interactive
+   (list (read-regexp "Filter log files by regex:" "2020-")
+         (completing-read
+          "Chose clave keymap to visualize:"
+          (delete-dups (mapcar 'cadr clave-keys)))
+         (completing-read
+          "Chose context keymap to visualize:"
+          (delete-dups (mapcar 'car clave-keys)))
+         (y-or-n-p "Log the counts")))
+  (browse-url
+   (clave-kle-make-url logs-regex clave-map-filter active-map-filter log-counts)))
 
 ;; (clave-kle-make-url)
+
+(provide 'clave)
+
+;; clave.el ends here
