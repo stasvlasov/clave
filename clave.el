@@ -98,34 +98,34 @@
 (defmacro clave-map-init (map-name &optional extra-keys keys)
   "Creates MAP-NAME keymap if is does not exist and binds dummy commands to KEYS. If KEYS is nil use `clave-map-init-standard-keys' list of keys instead. If EXTRA-KEYS are set it creates extra dummy functions and binds it to the end of MAP-NAME keymap. If EXTRA-KEYS is set to t it uses `clave-map-init-standard-keys' list as extra keys. Both KEYS and EXTRA-KEYS should be list of valid `kbd' arguments.
        Examples:
-	   ;; binds `clave-map-init-standard-keys' to my-map
-	   (clave-map-init 'my-map)
-	   ;; binds `clave-map-init-standard-keys' and `clave-map-init-standard-extra-keys'
-	   (clave-map-init 'my-map t)
-	   ;; add one extra key
-	   (clave-map-init 'my-map '(\"ESC\"))
-	   ;; binds one key
-	   (clave-map-init 'my-map nil '(\"ESC\"))"
+           ;; binds `clave-map-init-standard-keys' to my-map
+           (clave-map-init 'my-map)
+           ;; binds `clave-map-init-standard-keys' and `clave-map-init-standard-extra-keys'
+           (clave-map-init 'my-map t)
+           ;; add one extra key
+           (clave-map-init 'my-map '(\"ESC\"))
+           ;; binds one key
+           (clave-map-init 'my-map nil '(\"ESC\"))"
   `(progn
      ;; check keymap
      (unless (boundp ,map-name)
        (defvar ,(eval map-name) (make-sparse-keymap)))
      ;; define dummy functions
      ,@(mapcar
-	(lambda (key)
-	  (let ((func-name
-		 (make-symbol (concat (symbol-name (eval map-name)) "-" key))))
-	    `(progn
-	       (defun ,func-name ()
-		 "This is clave dummy command meant for rebinding."
-		 (interactive))
-	       (define-key ,(eval map-name) (kbd ,key) (quote ,func-name)))))
-	(append (or (eval keys)
-		    clave-map-init-standard-keys)
-		(when extra-keys
-		  (if (equal extra-keys t)
-		      clave-map-init-standard-extra-keys
-		    (eval extra-keys)))))))
+        (lambda (key)
+          (let ((func-name
+                 (make-symbol (concat (symbol-name (eval map-name)) "-" key))))
+            `(progn
+               (defun ,func-name ()
+                 "This is clave dummy command meant for rebinding."
+                 (interactive))
+               (define-key ,(eval map-name) (kbd ,key) (quote ,func-name)))))
+        (append (or (eval keys)
+                    clave-map-init-standard-keys)
+                (when extra-keys
+                  (if (equal extra-keys t)
+                      clave-map-init-standard-extra-keys
+                    (eval extra-keys)))))))
 
 ;; populate clave-map with dummy commands
 (clave-map-init 'clave-map)
@@ -133,43 +133,43 @@
 (defmacro clave-remap-key (active-map clave-map key command &optional type label)
   "Remaps dummy CLAVE-MAP-KEY function to COMMAND in ACTIVE-MAP and appends (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL) to `clave-keys' list. If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-map' with  `clave-map-init-standard-extra-keys'. If command is unquoted symbol then it is assumed to be a keymap which is bind directly to key (without remapping) as there is no known mechanism to remap command to keymap."
   (let* ((clave-map-name (if clave-map (symbol-name clave-map) "clave-map"))
-	 (clave-func (make-symbol (concat clave-map-name "-" key)))
-	 ;; the below I learned from xah-fly-keys and bind-key.el 
-	 ;; it is meant to pass keymap symbol to define-key and not the map itself
-	 (clave-map-var (make-symbol "clave-map-name"))
-	 (active-map-var (make-symbol "active-map-name"))
-	 (command-var (make-symbol "command-name"))
-	 type-keymap)
+         (clave-func (make-symbol (concat clave-map-name "-" key)))
+         ;; the below I learned from xah-fly-keys and bind-key.el 
+         ;; it is meant to pass keymap symbol to define-key and not the map itself
+         (clave-map-var (make-symbol "clave-map-name"))
+         (active-map-var (make-symbol "active-map-name"))
+         (command-var (make-symbol "command-name"))
+         type-keymap)
     `(let ((,active-map-var ,active-map))
        (unless (boundp (quote ,clave-map)) 
-	 (clave-map-init (quote ,clave-map) t))
+         (clave-map-init (quote ,clave-map) t))
        ,(if (symbolp command)
-	    (if active-map (error "Clave: Cannot bind `%s' prefix map to non clave map `%s'! If it is command and not prefix map then quote it."
-				  (symbol-name command)
-				  (symbol-name active-map))
-	  `(progn 
-	     (unless (boundp (quote ,command))
-	       (clave-map-init (quote ,command) t))
-	     (let ((,command-var ,command)
-		   (,clave-map-var ,clave-map))
-	       (define-key ,clave-map-var ,key ,command-var))))
+            (if active-map (error "Clave: Cannot bind `%s' prefix map to non clave map `%s'! If it is command and not prefix map then quote it."
+                                  (symbol-name command)
+                                  (symbol-name active-map))
+          `(progn 
+             (unless (boundp (quote ,command))
+               (clave-map-init (quote ,command) t))
+             (let ((,command-var ,command)
+                   (,clave-map-var ,clave-map))
+               (define-key ,clave-map-var ,key ,command-var))))
        (if active-map
-	    `(define-key ,active-map-var [remap ,clave-func] ,command)
-	  `(global-set-key [remap ,clave-func] ,command)))
+            `(define-key ,active-map-var [remap ,clave-func] ,command)
+          `(global-set-key [remap ,clave-func] ,command)))
        (add-to-list 'clave-keys '(,(if active-map
-				       (symbol-name active-map)
-				     "global-map")
-				  ,clave-map-name
-				  ,key
-				  ;; get command as string
-				  ,(if (symbolp command)
-				       ;; if not 'command then it must be keymap
-				       (progn (setq type-keymap "keymap")
-					      (symbol-name command))
-				     ;; if 'command it is command
-				     (symbol-name (eval command)))
-				  ,(or type type-keymap)
-				  ,label)))))
+                                       (symbol-name active-map)
+                                     "global-map")
+                                  ,clave-map-name
+                                  ,key
+                                  ;; get command as string
+                                  ,(if (symbolp command)
+                                       ;; if not 'command then it must be keymap
+                                       (progn (setq type-keymap "keymap")
+                                              (symbol-name command))
+                                     ;; if 'command it is command
+                                     (symbol-name (eval command)))
+                                  ,(or type type-keymap)
+                                  ,label)))))
 
 ;; test
 ;; (clave-remap-key package-map nil "a" a-func)
@@ -183,34 +183,34 @@
   ;; harmonize between (("a" b)) and ("a" b) args
   (unless (cdr args) (setq args (car args)))
   (let (param-map
-	param-clave-map
-	return-args)
+        param-clave-map
+        return-args)
     (while args
       (let ((x (car args)))
-	(pcase x
-	  ((or 
-	    ;; (KEY BINDING)
-	    `(,(pred stringp) ,_)
-	    ;; (KEY BINDING TYPE)
-	    `(,(pred stringp) ,_ ,_)
-	    ;; (KEY BINDING TYPE LABEL)
-	    `(,(pred stringp) ,_ ,_ ,_))
-	   ;; return list of (MAP CLAVE-MAP KEY BINDING &optional TYPE LABEL)
-	   (setq return-args
-		 (append return-args
-			 (list (append (list param-map) (list param-clave-map) x))))
-	   (setq args (cdr args)))
-	  ;; keywords
-	  ((or ':map ':active-map)
-	   (setq param-map (cadr args))
-	   ;; reset param-clave-map to default map
-	   (setq param-clave-map nil)
-	   (setq args (cddr args)))
-	  (':clave-map
-	   (setq param-clave-map (cadr args))
-	   (setq args (cddr args)))
-	  ;; skip value
-	  (_ (setq args (cdr args))))))
+        (pcase x
+          ((or 
+            ;; (KEY BINDING)
+            `(,(pred stringp) ,_)
+            ;; (KEY BINDING TYPE)
+            `(,(pred stringp) ,_ ,_)
+            ;; (KEY BINDING TYPE LABEL)
+            `(,(pred stringp) ,_ ,_ ,_))
+           ;; return list of (MAP CLAVE-MAP KEY BINDING &optional TYPE LABEL)
+           (setq return-args
+                 (append return-args
+                         (list (append (list param-map) (list param-clave-map) x))))
+           (setq args (cdr args)))
+          ;; keywords
+          ((or ':map ':active-map)
+           (setq param-map (cadr args))
+           ;; reset param-clave-map to default map
+           (setq param-clave-map nil)
+           (setq args (cddr args)))
+          (':clave-map
+           (setq param-clave-map (cadr args))
+           (setq args (cddr args)))
+          ;; skip value
+          (_ (setq args (cdr args))))))
     ;; return list
     return-args))
 
@@ -278,7 +278,7 @@
   (deactivate-input-method)
   ;; activate clave-map
   (setq clave--off-func
-	(set-transient-map clave-map (lambda () t)))
+        (set-transient-map clave-map (lambda () t)))
   (setq clave-on-p t)
   (clave-on-indicate)
   (run-hooks 'clave-on-hook))
@@ -321,9 +321,9 @@
   :keymap clave-minor-mode-map
   (if clave
       (progn (clave-off-indicate)
-	     (clave-set-hooks))
+             (clave-set-hooks))
     (progn (clave-unset-hooks)
-	   (clave-off))))
+           (clave-off))))
 
 ;; clave use-package integration
 
