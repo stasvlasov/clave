@@ -27,6 +27,9 @@
   (defvar clave-lighter " λ"  ;; ξѣѢѮ£₽⦾λ
     "Default mode line lighter for minor mode `clave'")
 
+  (defvar clave-lighter-on t
+    "Whether to display lighter for minor mode `clave'")
+
   (defvar clave-input-method nil "Stores current-input-method in clave-off state.")
 
   (defvar clave-map-init-standard-keys
@@ -322,7 +325,7 @@
     "A personalized modal keybinding set, like vim, but based on ergonomic principles, like Dvorak layout and personal preferences. Inspired by xah-fly-keys (URL `http://ergoemacs.org/misc/ergoemacs_vi_mode.html')"
     :init-value nil
     :global t
-    :lighter (:eval clave-lighter) 
+    :lighter (:eval (when clave-lighter-on clave-lighter))
     :keymap clave-minor-mode-map
     (if clave
         (progn (clave-off-indicate)
