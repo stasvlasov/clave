@@ -134,8 +134,13 @@
 (clave-map-init 'clave-map)
 
 (defmacro clave-remap-key (active-map clave-map key command &optional type label)
-  "Remaps dummy CLAVE-MAP-KEY function to COMMAND in ACTIVE-MAP and appends (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL) to `clave-keys' list. If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-map' with  `clave-map-init-standard-extra-keys'. If command is unquoted symbol then it is assumed to be a keymap which is bind directly to key (without remapping) as there is no known mechanism to remap command to keymap."
-  (let* ((clave-map-name (if clave-map (symbol-name clave-map) "clave-map"))
+  "Remaps dummy CLAVE-MAP-KEY function to COMMAND in ACTIVE-MAP and appends (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL) to `clave-keys' list. 
+
+ACTIVE-MAP can be not only a map's symbol but also a cons cell where CAR is the map's symbol and CDR refers to a feature that provides this map. It is used only in `use-package' implementation for `eval-after-load' and basically ignored by `clave-remap-key'.
+
+If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-map' with  `clave-map-init-standard-extra-keys'. If command is unquoted symbol then it is assumed to be a keymap which is bind directly to key (without remapping) as there is no known mechanism to remap command to keymap."
+  (let* ((active-map (if (listp active-map) (car active-map) active-map))
+         (clave-map-name (if clave-map (symbol-name clave-map) "clave-map"))
          (clave-func (make-symbol (concat clave-map-name "-" key)))
          ;; the below I learned from xah-fly-keys and bind-key.el 
          ;; it is meant to pass keymap symbol to define-key and not the map itself
@@ -147,18 +152,17 @@
        (unless (boundp (quote ,clave-map)) 
          (clave-map-init (quote ,clave-map) t))
        ,(if (symbolp command)
-            (if active-map (error "Clave: Cannot bind `%s' prefix map to non clave map `%s'! If it is command and not prefix map then quote it."
-                                  (symbol-name command)
-                                  (symbol-name active-map))
-          `(progn 
-             (unless (boundp (quote ,command))
-               (clave-map-init (quote ,command) t))
-             (let ((,command-var ,command)
-                   (,clave-map-var ,clave-map))
-               (define-key ,clave-map-var ,key ,command-var))))
-       (if active-map
-            `(define-key ,active-map-var [remap ,clave-func] ,command)
-          `(global-set-key [remap ,clave-func] ,command)))
+            (if active-map
+                (error "Clave: Cannot bind `%s' prefix map to non clave map `%s'! If it is command and not prefix map then quote it." (symbol-name command) (symbol-name active-map))
+              `(progn 
+                 (unless (boundp (quote ,command))
+                   (clave-map-init (quote ,command) t))
+                 (let ((,command-var ,command)
+                       (,clave-map-var ,clave-map))
+                   (define-key ,clave-map-var ,key ,command-var))))
+          (if active-map
+              `(define-key ,active-map-var [remap ,clave-func] ,command)
+            `(global-set-key [remap ,clave-func] ,command)))
        (add-to-list 'clave-keys '(,(if active-map
                                        (symbol-name active-map)
                                      "global-map")
@@ -175,7 +179,8 @@
                                   ,label)))))
 
 ;; test
-;; (clave-remap-key package-map nil "a" a-func)
+;; (clave-remap-key (package-map . package) nil "a" 'a-func)
+;; (clave-remap-key package-map nil "a" 'a-func)
 ;; (clave-remap-key nil clave-other-map "a" 'a-func)
 ;; (clave-remap-key nil clave-other-map "a" a-func)
 ;; (clave-remap-key package-map clave-other-map "a" a-func)
@@ -332,78 +337,90 @@
 
 ;;add :remap keyword
 (require 'seq)
-  (setq use-package-keywords 
-  (append
-    (seq-take-while (lambda (el) (not (equal el :bind))) use-package-keywords)
-    '(:remap)
-    (seq-drop-while (lambda (el) (not (equal el :bind))) use-package-keywords)))
+(setq use-package-keywords 
+      (append
+       (seq-take-while (lambda (el) (not (equal el :bind))) use-package-keywords)
+       '(:remap)
+       (seq-drop-while (lambda (el) (not (equal el :bind))) use-package-keywords)))
 
-    ;; (add-to-list 'use-package-keywords :remap)
-    ;; (setq use-package-keywords (remove ':remap use-package-keywords))
+;; (add-to-list 'use-package-keywords :remap)
+;; (setq use-package-keywords (remove ':remap use-package-keywords))
 
 
-    (defun use-package-normalize/:remap (name keyword args)
-      "Checks if the argumets are fine. See `clave-remap' for expected ARGS and how it is processed."
-      (clave-remap-normalize-args args))
+(defun use-package-normalize/:remap (name keyword args)
+  "Checks if the argumets are fine. See `clave-remap' for expected ARGS and how it is processed."
+  (clave-remap-normalize-args args))
 
     ;;;; test
 
-    ;; (use-package-normalize/:remap nil nil '(("a" 'sdf "asdf")
-    ;;                                         :active-map aaa
-    ;;                                         :clave-map clave-org
-    ;;                                         ("a" 'sdf "asdf" "sadf")
-    ;;                                         ("a" 'sdf "asdf")
-    ;;                                         :active-map bbb
-    ;;                                         ("a" 'sdf "asdf" "sadf")))
+;; (use-package-normalize/:remap nil nil '(("a" 'sdf "asdf")
+;;                                         :active-map aaa
+;;                                         :clave-map clave-org
+;;                                         ("a" 'sdf "asdf" "sadf")
+;;                                         ("a" 'sdf "asdf")
+;;                                         :active-map bbb
+;;                                         ("a" 'sdf "asdf" "sadf")))
 
 
-    ;; (use-package-normalize/:remap nil nil '((("a" 'sdf "asdf")
-    ;; 					 :clave-map clave-org-zero
-    ;; 					("a" 'sdf "asdf" "saf")
-    ;;                                         ("a" 'sdf "asdf")
-    ;;                                          :active-map aaa
-    ;;                                         :clave-map clave-org
-    ;;                                         ("a" 'sdf "asdf" "sadf")
-    ;;                                         ("a" 'sdf "asdf")
-    ;;                                         :active-map bbb
-    ;;                                         ("a" 'sdf "asdf" "sadf"))))
+;; (use-package-normalize/:remap nil nil '((("a" 'sdf "asdf")
+;; 					 :clave-map clave-org-zero
+;; 					("a" 'sdf "asdf" "saf")
+;;                                         ("a" 'sdf "asdf")
+;;                                          :active-map aaa
+;;                                         :clave-map clave-org
+;;                                         ("a" 'sdf "asdf" "sadf")
+;;                                         ("a" 'sdf "asdf")
+;;                                         :active-map bbb
+;;                                         ("a" 'sdf "asdf" "sadf"))))
 
-    (defun use-package-handler/:remap (name _keyword args rest state)
-      (use-package-concat
-       (use-package-process-keywords name rest state)
-       `(,@(mapcar #'(lambda (clave-remap-args)
-		       (pcase-let
-			   ((`(,active-map ,clave-map ,key ,command ,type ,label)
-			     clave-remap-args))
-			 (if active-map
-			     (progn
-			       (if (atom active-map)
-			       `(eval-after-load (quote ,name)
-				  '(clave-remap-key ,@clave-remap-args))
-			       ;; this is a new idea to evaluate after other than package feature
-			       `(eval-after-load (quote ,(cdr active-map))
-				  '(clave-remap-key ,@clave-remap-args))))
-			   `(progn
-			      (unless (or (keymapp ,command)
-					  (fboundp ,command))
-				(autoload ,command ,(symbol-name name) nil t))
-			      (clave-remap-key ,@clave-remap-args)))))
-		   args))))
+(defun use-package-handler/:remap (name _keyword args rest state)
+  (use-package-concat
+   (use-package-process-keywords name rest state)
+   `(,@(mapcar #'(lambda (clave-remap-args)
+                   (pcase-let
+                       ((`(,active-map ,clave-map ,key ,command ,type ,label)
+                         clave-remap-args))
+                     (if active-map
+                         (cond
+                          ((atom active-map)
+                           `(eval-after-load (quote ,name)
+                              '(clave-remap-key ,@clave-remap-args)))
+                          ;; the case active-map is provided by other feature
+                          ;; active-map can be specified as a cons cell
+                          ;; CDR is a feature
+                          ((consp active-map)
+                           `(eval-after-load (quote ,(cdr active-map))
+                              (progn
+                                (unless (or (keymapp ,command)
+                                            (fboundp ,command))
+                                  (autoload ,command ,(symbol-name name) nil t))
+                                (clave-remap-key ,@clave-remap-args)))))
+                       `(progn
+                          (unless (or (keymapp ,command)
+                                      (fboundp ,command))
+                            (autoload ,command ,(symbol-name name) nil t))
+                          (clave-remap-key ,@clave-remap-args)))))
+               args))))
 
-    ;; (use-package pack
-    ;;     :remap (:clave-map clave-map
-    ;; 	    ("a" 'a-func)
-    ;; 	    ("b" 'b-func)
-    ;; 	     ("f" clave-files-map)
-    ;; 	    :map a-map
-    ;; 	    ("c" 'c-func)
-    ;; 	    :clave-map clave-a-map
-    ;; 	    ("d" 'd-func)
-    ;; 	     ("d" d-map)
-    ;; 	    )
-    ;;   :bind ("a" . a-func)
-    ;;   :config (lala)
-    ;;   )
+
+
+(use-package pack
+  :remap
+  (:clave-map clave-map
+   ("a" 'a-func)
+   ("b" 'b-func)
+   ("f" clave-files-map)
+   :active-map a-map
+   ("c" 'c-func)
+   :clave-map clave-a-map
+   ("d" 'd-func)
+   ("d" d-map)
+   :active-map (b-map . b-mode)
+   ("c" 'c-func)
+   :clave-map clave-a-map
+   ("d" 'd-func)
+   ("d" d-map)
+   ))
 
 ;; clave visualizatoin with KLE
 
