@@ -359,7 +359,8 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
 
 
 (defun use-package-normalize/:remap (name keyword args)
-  "Checks if the argumets are fine. See `clave-remap' for expected ARGS and how it is processed." (clave-remap-normalize-args args 'for-use-package))
+  "Checks if the argumets are fine. See `clave-remap' for expected ARGS and how it is processed."
+  (clave-remap-normalize-args args 'for-use-package))
 
     ;;;; test
 
@@ -388,11 +389,11 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
    (use-package-process-keywords name rest state)
    `(,@(mapcar #'(lambda (clave-remap-args)
                    (pcase-let
-                       ((`(,eval-after ,active-map ,clave-map ,key ,command ,type ,label)
+                       ((`(,bind-after ,active-map ,clave-map ,key ,command ,type ,label)
                          clave-remap-args))
                      (if active-map
-                         (if eval-after
-                             `(eval-after-load (quote ,eval-after)
+                         (if bind-after
+                             `(eval-after-load (quote ,bind-after)
                                 (progn
                                   (unless (or (keymapp ,command)
                                               (fboundp ,command))
