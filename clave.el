@@ -134,13 +134,10 @@
 (clave-map-init 'clave-map)
 
 (defmacro clave-remap-key (active-map clave-map key command &optional type label)
-  "Remaps dummy CLAVE-MAP-KEY function to COMMAND in ACTIVE-MAP and appends (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL) to `clave-keys' list. 
-
-ACTIVE-MAP can be not only a map's symbol but also a list cell where CAR is the map's symbol and other argumets (e.g., :in FEATURE) are used only in `use-package' implementation and just ignored by `clave-remap-key'.
+  "Remaps dummy CLAVE-MAP-KEY function to COMMAND in ACTIVE-MAP and appends (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL) to `clave-keys' list.
 
 If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-map' with  `clave-map-init-standard-extra-keys'. If command is unquoted symbol then it is assumed to be a keymap which is bind directly to key (without remapping) as there is no known mechanism to remap command to keymap."
-  (let* ((active-map (if (listp active-map) (car active-map) active-map))
-         (clave-map-name (if clave-map (symbol-name clave-map) "clave-map"))
+  (let* ((clave-map-name (if clave-map (symbol-name clave-map) "clave-map"))
          (clave-func (make-symbol (concat clave-map-name "-" key)))
          ;; the below I learned from xah-fly-keys and bind-key.el 
          ;; it is meant to pass keymap symbol to define-key and not the map itself
