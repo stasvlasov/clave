@@ -186,12 +186,13 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
 ;; (clave-remap-key package-map clave-other-map "a" a-func)
 ;; (clave-remap-key org-map nil "RET" 'a-func "edit" "✖")
 
-(defun clave-remap-normalize-args (args)
+(defun clave-remap-normalize-args (args &optional for-use-package)
   "Checks if the ARGS are fine and normalize them into list of bindings descriptions for `clave-remap-key' macro as follows (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL)."
   ;; harmonize between (("a" b)) and ("a" b) args
   (unless (cdr args) (setq args (car args)))
-  (let (param-map
+  (let (param-active-map
         param-clave-map
+        param-bind-after
         return-args)
     (while args
       (let ((x (car args)))
@@ -204,15 +205,25 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
             ;; (KEY BINDING TYPE LABEL)
             `(,(pred stringp) ,_ ,_ ,_))
            ;; return list of (MAP CLAVE-MAP KEY BINDING &optional TYPE LABEL)
+           ;; for use-package return list of (BIND-AFTER MAP CLAVE-MAP KEY BINDING &optional TYPE LABEL)
            (setq return-args
                  (append return-args
-                         (list (append (list param-map) (list param-clave-map) x))))
+                         (list 
+                          (append
+                           (when for-use-package
+                             (list param-bind-after))
+                           (list param-active-map)
+                           (list param-clave-map)
+                           x))))
            (setq args (cdr args)))
           ;; keywords
           ((or ':map ':active-map)
-           (setq param-map (cadr args))
+           (setq param-active-map (cadr args))
            ;; reset param-clave-map to default map
            (setq param-clave-map nil)
+           (setq args (cddr args)))
+          ((or ':in ':after ':eval-after ':remap-after ':bind-after)
+           (setq param-bind-after (cadr args))
            (setq args (cddr args)))
           (':clave-map
            (setq param-clave-map (cadr args))
@@ -222,6 +233,8 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
     ;; return list
     return-args))
 
+
+
 ;; (clave-remap-normalize-args
 ;;  '(("a" 'a-func) ;; remaps clave-map-a to a-func in global-map
 ;;    ("b" 'b-func) ;; remaps clave-map-b to b-func in global-map
@@ -229,8 +242,9 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
 ;;    ("c" 'c-func) ;; remaps clave-map-b to b-func in global-map
 ;;    :clave-map clave-a-map
 ;;    ("b" 'b-func)
+;;    :bind-after c
 ;;    :active-map c-map
-;;    ("c" 'c-func)))
+;;    ("c" 'c-func)) t)
 
 (defmacro clave-remap (&rest args)
   "Remaps clave keys (clave dummy functions) to commands. The ARGS should be a list of following elements:
@@ -348,8 +362,7 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
 
 
 (defun use-package-normalize/:remap (name keyword args)
-  "Checks if the argumets are fine. See `clave-remap' for expected ARGS and how it is processed."
-  (clave-remap-normalize-args args))
+  "Checks if the argumets are fine. See `clave-remap' for expected ARGS and how it is processed." (clave-remap-normalize-args args 'for-use-package))
 
     ;;;; test
 
@@ -378,28 +391,23 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
    (use-package-process-keywords name rest state)
    `(,@(mapcar #'(lambda (clave-remap-args)
                    (pcase-let
-                       ((`(,active-map ,clave-map ,key ,command ,type ,label)
+                       ((`(,eval-after ,active-map ,clave-map ,key ,command ,type ,label)
                          clave-remap-args))
                      (if active-map
-                         (cond
-                          ((atom active-map)
+                         (if eval-after
+                             `(eval-after-load (quote ,eval-after)
+                                (progn
+                                  (unless (or (keymapp ,command)
+                                              (fboundp ,command))
+                                    (autoload ,command ,(symbol-name name) nil t))
+                                  (clave-remap-key ,@(cdr clave-remap-args))))
                            `(eval-after-load (quote ,name)
-                              '(clave-remap-key ,@clave-remap-args)))
-                          ;; the case active-map is provided by other feature
-                          ;; active-map can be specified as a cons cell
-                          ;; CDR is a feature
-                          ((listp active-map)
-                           `(eval-after-load (quote ,(plist-get active-map :in))
-                              (progn
-                                (unless (or (keymapp ,command)
-                                            (fboundp ,command))
-                                  (autoload ,command ,(symbol-name name) nil t))
-                                (clave-remap-key ,@clave-remap-args)))))
+                              '(clave-remap-key ,@(cdr clave-remap-args))))
                        `(progn
                           (unless (or (keymapp ,command)
                                       (fboundp ,command))
                             (autoload ,command ,(symbol-name name) nil t))
-                          (clave-remap-key ,@clave-remap-args)))))
+                          (clave-remap-key ,@(cdr clave-remap-args))))))
                args))))
 
 ;; (use-package pack
@@ -413,7 +421,8 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
 ;;    :clave-map clave-a-map
 ;;    ("d" 'd-func)
 ;;    ("d" d-map)
-;;    :active-map (b-map . b-mode)
+;;    :bind-after b-mode
+;;    :active-map b-map
 ;;    ("c" 'c-func)
 ;;    :clave-map clave-a-map
 ;;    ("d" 'd-func)
