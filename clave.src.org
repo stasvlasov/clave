@@ -204,9 +204,9 @@
               ;; (KEY BINDING)
               `(,(pred stringp) ,_)
               ;; (KEY BINDING TYPE)
-              `(,(pred stringp) ,_ ,_)
+              `(,(pred stringp) ,_ ,(pred stringp))
               ;; (KEY BINDING TYPE LABEL)
-              `(,(pred stringp) ,_ ,_ ,_))
+              `(,(pred stringp) ,_ ,(pred stringp) ,(pred stringp)))
              ;; return list of (MAP CLAVE-MAP KEY BINDING &optional TYPE LABEL)
              ;; for use-package return list of (BIND-AFTER MAP CLAVE-MAP KEY BINDING &optional TYPE LABEL)
              (setq return-args
@@ -220,23 +220,23 @@
                              x))))
              (setq args (cdr args)))
             ;; keywords
-            ((or ':map ':active-map)
+            (':active-map
              (setq param-active-map (cadr args))
              ;; reset param-clave-map to default map
              (setq param-clave-map nil)
              (setq args (cddr args)))
-            ((or ':in ':after ':eval-after ':remap-after ':bind-after)
+            (':bind-after
              (setq param-bind-after (cadr args))
              (setq args (cddr args)))
             (':clave-map
              (setq param-clave-map (cadr args))
              (setq args (cddr args)))
             ;; skip value
-            (_ (setq args (cdr args))))))
+            (_ 
+             (warn "clave-remap-normalize-args: Do not know how to process '%s' keyword." x)
+             (setq args (cdr args))))))
       ;; return list
       return-args))
-  
-  
   
   ;; (clave-remap-normalize-args
   ;;  '(("a" 'a-func) ;; remaps clave-map-a to a-func in global-map
@@ -248,6 +248,8 @@
   ;;    :bind-after c
   ;;    :active-map c-map
   ;;    ("c" 'c-func)) t)
+  
+  
   
   (defmacro clave-remap (&rest args)
     "Remaps clave keys (clave dummy functions) to commands. The ARGS should be a list of following elements:
@@ -381,7 +383,8 @@
   ;;                                         :clave-map clave-org
   ;;                                         ("a" 'sdf "asdf" "sadf")
   ;;                                         ("a" 'sdf "asdf")
-  ;;                                         :active-map bbb
+  ;;                                         :bind-after bbb
+  ;;                                         :active-map bbb-map
   ;;                                         ("a" 'sdf "asdf" "sadf")))
   
   
@@ -406,7 +409,7 @@
                        (if active-map
                            (if bind-after
                                `(eval-after-load (quote ,bind-after)
-                                  (progn
+                                  '(progn
                                     (unless (or (keymapp ,command)
                                                 (fboundp ,command))
                                       (autoload ,command ,(symbol-name name) nil t))
