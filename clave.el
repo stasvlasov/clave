@@ -198,9 +198,9 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
             ;; (KEY BINDING)
             `(,(pred stringp) ,_)
             ;; (KEY BINDING TYPE)
-            `(,(pred stringp) ,_ ,(pred stringp))
+            `(,(pred stringp) ,_ ,_)
             ;; (KEY BINDING TYPE LABEL)
-            `(,(pred stringp) ,_ ,(pred stringp) ,(pred stringp)))
+            `(,(pred stringp) ,_ ,_ ,_))
            ;; return list of (MAP CLAVE-MAP KEY BINDING &optional TYPE LABEL)
            ;; for use-package return list of (BIND-AFTER MAP CLAVE-MAP KEY BINDING &optional TYPE LABEL)
            (setq return-args
