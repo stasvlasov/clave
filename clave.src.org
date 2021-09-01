@@ -256,6 +256,7 @@
     - binding description (KEY COMMAND &optional TYPE LABEL)
     - :active-map keyword followed by symbol (unquoted)
     - :clave-map keyword followed by symbol (unquoted)
+    - :bind-after keyword followed by symbol (unquoted) - (similar to eval-after-load for bindings to keymaps that are not nessesary loaded)
   
     Order matters: First it remaps dummy-functions clave-map-KEY from default `clave-map' to `global-map'. Everything after :active-map specification binds to that map until next :active-map specification. Similar for :clave-map specification albeit it tells from which clave map which clave dummy function to bind (see `clave-map-init' for details).
   
