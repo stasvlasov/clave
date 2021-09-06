@@ -285,13 +285,15 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
 
 
 ;; functions
-(defun clave-change-terminal-cursor-to-bar ()
-  "Change terminal cursor to bar)"
-  (shell-command "echo -e '\e[6 q'"))
 
 (defun clave-change-terminal-cursor-to-box ()
-  "Change terminal cursor to box"
-  (shell-command "echo -e '\e[2 q'"))
+  "Change terminal cursor to box. Same as typing echo -e '\e[2 q' in the terminal"
+  (send-string-to-terminal "\033[2 q"))
+
+(defun clave-change-terminal-cursor-to-bar ()
+  "Change terminal cursor to bar. Same as typing echo -e '\e[6 q' in the terminal"
+  (send-string-to-terminal "\033[6 q"))
+
 
 (defun clave-on-indicate ()
   "Indicate clave on state."
