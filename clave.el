@@ -281,15 +281,30 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
 ;;  :active-map c-map
 ;;  ("c" 'c-func)))
 
+
+
+
 ;; functions
+(defun clave-change-terminal-cursor-to-bar ()
+  "Change terminal cursor to bar)"
+  (shell-command "echo -e '\e[6 q'"))
+
+(defun clave-change-terminal-cursor-to-box ()
+  "Change terminal cursor to box"
+  (shell-command "echo -e '\e[2 q'"))
+
 (defun clave-on-indicate ()
   "Indicate clave on state."
-  (modify-all-frames-parameters (list (cons 'cursor-type 'box)))
+  (if (display-graphic-p)
+      (modify-all-frames-parameters (list (cons 'cursor-type 'box)))
+    (clave-change-terminal-cursor-to-box))
   (global-hl-line-mode 1))
 
 (defun clave-off-indicate ()
-  "Indicate clave on state."
-  (modify-all-frames-parameters (list (cons 'cursor-type 'bar)))
+  "Indicate clave off state."
+  (if (display-graphic-p)
+      (modify-all-frames-parameters (list (cons 'cursor-type 'bar)))
+    (clave-change-terminal-cursor-to-bar))
   (global-hl-line-mode 0))
 
 (defun clave-on ()
