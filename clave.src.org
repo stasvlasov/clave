@@ -9,30 +9,30 @@
     "Hook for `clave-on'")
   (defvar clave-off-hook nil
     "Hook for `clave-off'")
-  
+
   ;; define keymaps
   (defvar clave-minor-mode-map (make-sparse-keymap)
     "Keybinding for `clave' minor mode.")
-  
+
   (defvar clave-map (make-sparse-keymap)
     "Keybinding for `clave' command mode.")
-  
+
   ;; (setq clave-map (make-sparse-keymap))
-  
+
   ;; define variables
   (defvar clave--off-func '(lambda ())
     "Function to remove map.")
-  
+
   (defvar clave-on-p nil "Clave state.")
-  
+
   (defvar clave-lighter " λ"  ;; ξѣѢѮ£₽⦾λ
     "Default mode line lighter for minor mode `clave'")
-  
+
   (defvar clave-lighter-off nil
     "Directly disable lighter for minor mode `clave'. Other hacks (e.g., blackout.el) might not work.")
-  
+
   (defvar clave-input-method nil "Stores current-input-method in clave-off state.")
-  
+
   (defvar clave-map-init-standard-keys
     '(
       ;; Numbers are Workman's difficulty of keys. The higher number the worse.
@@ -94,16 +94,16 @@
       "." ">"  ; 4
       "/" "?"  ; 4
       ))
-  
+
   (defvar clave-map-init-standard-extra-keys
     '("TAB"
       "RET"
       "SPC"
       "DEL"))
-  
+
   (defvar clave-keys nil
     "List of keybindings description in form of (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL) defined with `clave-remap-key'.")
-  
+
   (defmacro clave-map-init (map-name &optional extra-keys keys)
     "Creates MAP-NAME keymap if is does not exist and binds dummy commands to KEYS. If KEYS is nil use `clave-map-init-standard-keys' list of keys instead. If EXTRA-KEYS are set it creates extra dummy functions and binds it to the end of MAP-NAME keymap. If EXTRA-KEYS is set to t it uses `clave-map-init-standard-keys' list as extra keys. Both KEYS and EXTRA-KEYS should be list of valid `kbd' arguments.
          Examples:
@@ -135,13 +135,13 @@
                     (if (equal extra-keys t)
                         clave-map-init-standard-extra-keys
                       (eval extra-keys)))))))
-  
+
   ;; populate clave-map with dummy commands
   (clave-map-init 'clave-map)
-  
+
   (defmacro clave-remap-key (active-map clave-map key command &optional type label)
     "Remaps dummy CLAVE-MAP-KEY function to COMMAND in ACTIVE-MAP and appends (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL) to `clave-keys' list.
-  
+
   If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-map' with  `clave-map-init-standard-extra-keys'. If command is unquoted symbol then it is assumed to be a keymap which is bind directly to key (without remapping) as there is no known mechanism to remap command to keymap."
     (let* ((clave-map-name (if clave-map (symbol-name clave-map) "clave-map"))
            (clave-func (make-symbol (concat clave-map-name "-" key)))
@@ -180,7 +180,7 @@
                                        (symbol-name (eval command)))
                                     ,(or type type-keymap)
                                     ,label)))))
-  
+
   ;; test
   ;; (clave-remap-key (package-map . package) nil "a" 'a-func)
   ;; (clave-remap-key package-map nil "a" 'a-func)
@@ -188,7 +188,7 @@
   ;; (clave-remap-key nil clave-other-map "a" a-func)
   ;; (clave-remap-key package-map clave-other-map "a" a-func)
   ;; (clave-remap-key org-map nil "RET" 'a-func "edit" "✖")
-  
+
   (defun clave-remap-normalize-args (args &optional for-use-package)
     "Checks if the ARGS are fine and normalize them into list of bindings descriptions for `clave-remap-key' macro as follows (ACTIVE-MAP CLAVE-MAP KEY COMMAND TYPE LABEL)."
     ;; harmonize between (("a" b)) and ("a" b) args
@@ -237,7 +237,7 @@
              (setq args (cdr args))))))
       ;; return list
       return-args))
-  
+
   ;; (clave-remap-normalize-args
   ;;  '(("a" 'a-func) ;; remaps clave-map-a to a-func in global-map
   ;;    ("b" 'b-func) ;; remaps clave-map-b to b-func in global-map
@@ -248,18 +248,18 @@
   ;;    :bind-after c
   ;;    :active-map c-map
   ;;    ("c" 'c-func)) t)
-  
-  
-  
+
+
+
   (defmacro clave-remap (&rest args)
     "Remaps clave keys (clave dummy functions) to commands. The ARGS should be a list of following elements:
     - binding description (KEY COMMAND &optional TYPE LABEL)
     - :active-map keyword followed by symbol (unquoted)
     - :clave-map keyword followed by symbol (unquoted)
     - :bind-after keyword followed by symbol (unquoted) - (similar to eval-after-load for bindings to keymaps that are not nessesary loaded)
-  
+
     Order matters: First it remaps dummy-functions clave-map-KEY from default `clave-map' to `global-map'. Everything after :active-map specification binds to that map until next :active-map specification. Similar for :clave-map specification albeit it tells from which clave map which clave dummy function to bind (see `clave-map-init' for details).
-  
+
     Example:
     (clave-remap
       (\"a\" 'a-func) ;; remaps clave-map-a to a-func in global-map
@@ -270,13 +270,13 @@
       (\"b\" 'b-func)
       :active-map c-map
       (\"c\" 'c-func))
-  
+
     The each remap specification when processed passed to `clave-remap-key' macro."
     (macroexp-progn
      (mapcar
       (lambda (arg) `(clave-remap-key ,@arg))
       (clave-remap-normalize-args args))))
-  
+
   ;; (clave-remap
   ;; ( ("a" 'a-func) ;; remaps clave-map-a to a-func in global-map
   ;;  ("b" 'b-func) ;; remaps clave-map-b to b-func in global-map
@@ -286,12 +286,12 @@
   ;;  ("b" 'b-func)
   ;;  :active-map c-map
   ;;  ("c" 'c-func)))
-  
-  
-  
-  
+
+
+
+
   ;; functions
-  
+
   (defun clave-change-terminal-cursor-to-box ()
     "Change terminal cursor to box. Same as typing echo -e '\e[2 q' in the terminal"
     (send-string-to-terminal "\033[2 q"))
@@ -299,7 +299,7 @@
   (defun clave-change-terminal-cursor-to-bar ()
     "Change terminal cursor to bar. Same as typing echo -e '\e[6 q' in the terminal"
     (send-string-to-terminal "\033[6 q"))
-  
+
 
   (defun clave-on-indicate ()
     "Indicate clave on state."
@@ -307,14 +307,14 @@
         (modify-all-frames-parameters (list (cons 'cursor-type 'box)))
       (clave-change-terminal-cursor-to-box))
     (global-hl-line-mode 1))
-  
+
   (defun clave-off-indicate ()
     "Indicate clave off state."
     (if (display-graphic-p)
         (modify-all-frames-parameters (list (cons 'cursor-type 'bar)))
       (clave-change-terminal-cursor-to-bar))
     (global-hl-line-mode 0))
-  
+
   (defun clave-on ()
     "Activate `clave' command mode."
     (interactive)
@@ -327,7 +327,10 @@
     (setq clave-on-p t)
     (clave-on-indicate)
     (run-hooks 'clave-on-hook))
-  
+
+  (defvar clave-toggle-input-method-if-on-off t
+    "Whether to toggle input method if clave was turned off right after it was turned on")
+
   (defun clave-off ()
     "Activate `clave' insertion mode."
     (interactive)
@@ -336,12 +339,18 @@
     ;; restore input method
     (when clave-input-method
       (activate-input-method clave-input-method))
+    ;; switch input method on clave on-off
+    (when (and
+           clave-toggle-input-method-if-on-off
+           (equal last-command 'clave-on))
+      ;; (toggle-input-method)
+      (sv-toggle-input-method))
     (clave-off-indicate)
-    (run-hooks 'clave-off-hook))
-  
+    (run-hooks 'clave-off-hook))  
+
   ;; we need an escape from clave-on
   (define-key clave-map (kbd "SPC") 'clave-off)
-  
+
   ;; clave minor mode
   (defun clave-set-hooks ()
     "Sets hooks for `clave' minor mode states"
@@ -349,14 +358,14 @@
     (add-hook 'shell-mode-hook 'clave-off)
     (add-hook 'minibuffer-exit-hook 'clave-on)
     (add-hook 'isearch-mode-end-hook 'clave-on))
-  
+
   (defun clave-unset-hooks ()
     "Unets hooks for `clave' minor mode states. Used for turning `clave' minor mode of."
     (remove-hook 'minibuffer-setup-hook 'clave-off)
     (remove-hook 'shell-mode-hook 'clave-off)
     (remove-hook 'minibuffer-exit-hook 'clave-on)
     (remove-hook 'isearch-mode-end-hook 'clave-on))
-  
+
          ;;;###autoload
   (define-minor-mode clave
     "A personalized modal keybinding set, like vim, but based on ergonomic principles, like Dvorak layout and personal preferences. Inspired by xah-fly-keys (URL `http://ergoemacs.org/misc/ergoemacs_vi_mode.html')"

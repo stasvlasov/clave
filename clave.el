@@ -322,6 +322,9 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
   (clave-on-indicate)
   (run-hooks 'clave-on-hook))
 
+(defvar clave-toggle-input-method-if-on-off t
+  "Whether to toggle input method if clave was turned off right after it was turned on")
+
 (defun clave-off ()
   "Activate `clave' insertion mode."
   (interactive)
@@ -330,8 +333,14 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
   ;; restore input method
   (when clave-input-method
     (activate-input-method clave-input-method))
+  ;; switch input method on clave on-off
+  (when (and
+         clave-toggle-input-method-if-on-off
+         (equal last-command 'clave-on))
+    ;; (toggle-input-method)
+    (sv-toggle-input-method))
   (clave-off-indicate)
-  (run-hooks 'clave-off-hook))
+  (run-hooks 'clave-off-hook))  
 
 ;; we need an escape from clave-on
 (define-key clave-map (kbd "SPC") 'clave-off)
