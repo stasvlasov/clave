@@ -301,17 +301,22 @@
     (send-string-to-terminal "\033[6 q"))
 
 
+  (defvar clave-on-indicate-cursor 'box)
+  (defvar clave-off-indicate-cursor 'bar)
+
   (defun clave-on-indicate ()
     "Indicate clave on state."
     (if (display-graphic-p)
-        (modify-all-frames-parameters (list (cons 'cursor-type 'box)))
+        (modify-all-frames-parameters
+         (list (cons 'cursor-type clave-on-indicate-cursor)))
       (clave-change-terminal-cursor-to-box))
     (global-hl-line-mode 1))
 
   (defun clave-off-indicate ()
     "Indicate clave off state."
     (if (display-graphic-p)
-        (modify-all-frames-parameters (list (cons 'cursor-type 'bar)))
+        (modify-all-frames-parameters
+         (list (cons 'cursor-type clave-off-indicate-cursor)))
       (clave-change-terminal-cursor-to-bar))
     (global-hl-line-mode 0))
 
