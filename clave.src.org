@@ -293,32 +293,48 @@
   ;; functions
 
   (defun clave-change-terminal-cursor-to-box ()
-    "Change terminal cursor to box. Same as typing echo -e '\e[2 q' in the terminal"
+    "Change terminal cursor to box. Same as typing echo -e '\e[2 q' in the terminal
+
+  https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_-ordered-by-the-final-character-lparen-s-rparen:CSI-Ps-SP-q.1D81"
     (send-string-to-terminal "\033[2 q"))
 
   (defun clave-change-terminal-cursor-to-bar ()
-    "Change terminal cursor to bar. Same as typing echo -e '\e[6 q' in the terminal"
+    "Change terminal cursor to bar. Same as typing echo -e '\e[6 q' in the terminal
+
+  https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_-ordered-by-the-final-character-lparen-s-rparen:CSI-Ps-SP-q.1D81"
     (send-string-to-terminal "\033[6 q"))
 
+  (defun clave-change-terminal-cursor-to-hbar ()
+    "Change terminal cursor to bar. Same as typing echo -e '\e[4 q' in the terminal
 
-  (defvar clave-on-indicate-cursor 'box)
-  (defvar clave-off-indicate-cursor 'bar)
+  https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_-ordered-by-the-final-character-lparen-s-rparen:CSI-Ps-SP-q.1D81"
+    (send-string-to-terminal "\033[4 q"))
+
+
+  (defvar clave-indicate-cursor-on 'box)
+  (defvar clave-indicate-cursor-off 'bar)
+  (defvar clave-indicate-cursor-off-input-method-active 'hbar)
 
   (defun clave-on-indicate ()
     "Indicate clave on state."
     (if (display-graphic-p)
         (modify-all-frames-parameters
-         (list (cons 'cursor-type clave-on-indicate-cursor)))
-      (clave-change-terminal-cursor-to-box))
+         (list (cons 'cursor-type clave-indicate-cursor-on)))
+       (clave-change-terminal-cursor-to-box))
     (global-hl-line-mode 1))
 
   (defun clave-off-indicate ()
     "Indicate clave off state."
     (if (display-graphic-p)
         (modify-all-frames-parameters
-         (list (cons 'cursor-type clave-off-indicate-cursor)))
-      (clave-change-terminal-cursor-to-bar))
-    (global-hl-line-mode 0))
+         (list (cons 'cursor-type
+                     (if clave-input-method
+                         clave-indicate-cursor-off-input-method-active
+                       clave-indicate-cursor-off))))
+         (if clave-input-method
+             (clave-change-terminal-cursor-to-bar)
+           (clave-change-terminal-cursor-to-hbar)))
+      (global-hl-line-mode 0))
 
   (defun clave-on ()
     "Activate `clave' command mode."
@@ -347,6 +363,7 @@
     ;; switch input method on clave on-off
     (when (and
            clave-toggle-input-method-if-on-off
+           (functionp 'sv-toggle-input-method)
            (equal last-command 'clave-on))
       ;; (toggle-input-method)
       (sv-toggle-input-method))
