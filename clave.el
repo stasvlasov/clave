@@ -327,7 +327,7 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
   (clave-on-indicate)
   (run-hooks 'clave-on-hook))
 
-(defvar clave-toggle-input-method-if-on-off t
+(defvar clave-toggle-input-method-if-on-off nil
   "Whether to toggle input method if clave was turned off right after it was turned on")
 
 (defun clave-off ()
