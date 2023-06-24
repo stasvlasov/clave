@@ -317,15 +317,15 @@ https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_
      (clave-change-terminal-cursor-to-box))
   (global-hl-line-mode 1))
 
-(defun clave-off-indicate ()
+(defun clave-off-indicate (input-method)
   "Indicate clave off state."
   (if (display-graphic-p)
       (modify-all-frames-parameters
        (list (cons 'cursor-type
-                   (if clave-input-method
+                   (if input-method
                        clave-indicate-cursor-off-input-method-active
                      clave-indicate-cursor-off))))
-       (if clave-input-method
+       (if input-method
            (clave-change-terminal-cursor-to-bar)
          (clave-change-terminal-cursor-to-hbar)))
     (global-hl-line-mode 0))
@@ -361,7 +361,7 @@ https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_
          (equal last-command 'clave-on))
     ;; (toggle-input-method)
     (sv-toggle-input-method))
-  (clave-off-indicate)
+  (clave-off-indicate current-input-method)
   (run-hooks 'clave-off-hook))  
 
 ;; we need an escape from clave-on
@@ -390,7 +390,7 @@ https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_
   :lighter (:eval (unless clave-lighter-off clave-lighter))
   :keymap clave-minor-mode-map
   (if clave
-      (progn (clave-off-indicate)
+      (progn (clave-off-indicate current-input-method)
              (clave-set-hooks))
     (progn (clave-unset-hooks)
            (clave-off))))
