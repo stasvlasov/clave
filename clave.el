@@ -306,8 +306,8 @@ https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_
 
 
 (defvar clave-indicate-cursor-on 'box)
-(defvar clave-indicate-cursor-off 'bar)
-(defvar clave-indicate-cursor-off-input-method-active 'hbar)
+(defvar clave-indicate-cursor-off 'hbar)
+(defvar clave-indicate-cursor-off-input-method-active 'bar)
 
 (defun clave-on-indicate ()
   "Indicate clave on state."
