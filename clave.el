@@ -152,11 +152,15 @@ If CLAVE-MAP does not exist at evaluation then it is initialized by `clave-init-
             (if active-map
                 (error "Clave: Cannot bind `%s' prefix map to non clave map `%s'! If it is command and not prefix map then quote it." (symbol-name command) (symbol-name active-map))
               `(progn 
-                 (unless (boundp (quote ,command))
+                 (unless (keymapp (quote ,command))
                    (clave-map-init (quote ,command) t))
-                 (let ((,command-var ,command)
-                       (,clave-map-var ,clave-map))
-                   (define-key ,clave-map-var ,key ,command-var))))
+                 ;; check if it is autoloaded map
+                 (if (autoloadp (symbol-function (quote ,command)))
+                     (let ((,clave-map-var ,clave-map))
+                       (define-key ,clave-map-var ,key (quote ,command)))
+                   (let ((,command-var ,command)
+                         (,clave-map-var ,clave-map))
+                     (define-key ,clave-map-var ,key ,command-var)))))
           (if active-map
               `(define-key ,active-map-var [remap ,clave-func] ,command)
             `(global-set-key [remap ,clave-func] ,command)))
@@ -443,21 +447,21 @@ https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_
                    (pcase-let
                        ((`(,bind-after ,active-map ,clave-map ,key ,command ,type ,label)
                          clave-remap-args))
-                     (if active-map
-                         (if bind-after
-                             `(eval-after-load (quote ,bind-after)
-                                '(progn
-                                  (unless (or (keymapp ,command)
-                                              (fboundp ,command))
-                                    (autoload ,command ,(symbol-name name) nil t))
-                                  (clave-remap-key ,@(cdr clave-remap-args))))
-                           `(eval-after-load (quote ,name)
-                              '(clave-remap-key ,@(cdr clave-remap-args))))
-                       `(progn
-                          (unless (or (keymapp ,command)
-                                      (fboundp ,command))
-                            (autoload ,command ,(symbol-name name) nil t))
-                          (clave-remap-key ,@(cdr clave-remap-args))))))
+                     (let ((autoload-and-remap
+                            `(progn
+                               ;; autoload if not bound
+                               ;; treat unquoted command as keymap
+                               (if (and (symbolp (quote ,command)) (not (boundp (quote ,command))))
+                                   (autoload (quote ,command) ,(symbol-name name) nil nil 'keymap)
+                                 (unless (or (keymapp ,command) (fboundp ,command))
+                                   (autoload ,command ,(symbol-name name) nil t)))
+                               (clave-remap-key ,@(cdr clave-remap-args)))))
+                       (if active-map
+                           (if bind-after
+                               `(eval-after-load (quote ,bind-after) (quote ,autoload-and-remap))
+                             `(eval-after-load (quote ,name)
+                                '(clave-remap-key ,@(cdr clave-remap-args))))
+                         autoload-and-remap))))
                args))))
 
 ;; (use-package pack
